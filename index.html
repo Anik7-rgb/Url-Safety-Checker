@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Safety Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-card {
+            margin-top: 2rem;
+            transition: all 0.3s ease;
+        }
+        .score-display {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0 auto 1rem auto;
+            color: white;
+        }
+        .score-high {
+            background-color: #28a745;
+        }
+        .score-medium {
+            background-color: #ffc107;
+        }
+        .score-low {
+            background-color: #dc3545;
+        }
+        .domain-info {
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h1 class="h4 mb-0">URL Safety Checker</h1>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('index') }}">
+                            {{ form.hidden_tag() }}
+                            <div class="mb-3">
+                                {{ form.url.label(class="form-label") }}
+                                {{ form.url(class="form-control", placeholder="Enter a URL to check its safety") }}
+                                {% if form.url.errors %}
+                                    <div class="alert alert-danger mt-2">
+                                        {% for error in form.url.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {{ form.submit(class="btn btn-primary w-100") }}
+                        </form>
+                    </div>
+                </div>
+
+                {% if result %}
+                <div class="result-card card shadow">
+                    <div class="card-header {% if result.is_safe %}bg-success{% else %}bg-danger{% endif %} text-white">
+                        <h2 class="h5 mb-0">Safety Analysis Results</h2>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="score-display {% if result.safety_score >= 80 %}score-high{% elif result.safety_score >= 40 %}score-medium{% else %}score-low{% endif %}">
+                            {{ result.safety_score }}
+                        </div>
+                        <h3 class="h5">{{ result.url }}</h3>
+                        <p class="lead {% if result.is_safe %}text-success{% else %}text-danger{% endif %} fw-bold">
+                            {% if result.is_safe %}
+                                This URL appears to be safe
+                            {% else %}
+                                This URL may be unsafe
+                            {% endif %}
+                        </p>
+                        <div class="alert {% if result.is_safe %}alert-success{% else %}alert-danger{% endif %}">
+                            {{ result.recommendation }}
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h4 class="h6 mb-0">Security Checks</h4>
+                                    </div>
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Valid URL Syntax
+                                            <span class="badge {% if result.syntax_valid %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                                                {% if result.syntax_valid %}{% else %}{% endif %}
+                                            </span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            SSL Certificate
+                                            <span class="badge {% if result.ssl_secure %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                                                {% if result.ssl_secure %}{% else %}{% endif %}
+                                            </span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Suspicious Patterns
+                                            <span class="badge {% if not result.suspicious_patterns %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                                                {% if not result.suspicious_patterns %}{% else %}{% endif %}
+                                            </span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Redirect Count
+                                            <span class="badge {% if result.redirect_count <= 3 %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                                                {{ result.redirect_count }}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                {% if result.domain_info %}
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h4 class="h6 mb-0">Domain Information</h4>
+                                    </div>
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Registered Domain
+                                            <span class="badge bg-primary rounded-pill">
+                                                {{ result.domain_info.registered_domain }}
+                                            </span>
+                                        </li>
+                                        {% if result.domain_info.subdomain %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Subdomain
+                                            <span class="badge bg-secondary rounded-pill">
+                                                {{ result.domain_info.subdomain }}
+                                            </span>
+                                        </li>
+                                        {% endif %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            Domain
+                                            <span class="badge bg-info text-dark rounded-pill">
+                                                {{ result.domain_info.domain }}
+                                            </span>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            TLD
+                                            <span class="badge bg-dark rounded-pill">
+                                                {{ result.domain_info.suffix }}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
